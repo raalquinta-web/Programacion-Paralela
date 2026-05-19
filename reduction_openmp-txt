@@ -1,0 +1,68 @@
+Resolución de ejercicio: reducciones paralelas en OpenMP
+
+-------------------------------------------------------------------------------
+1. Concepto clave: reglas para reducciones en OpenMP
+-------------------------------------------------------------------------------
+Para que una operación matemática sea válida en una cláusula de reducción 
+en OpenMP (cláusula 'reduction'), debe cumplir con dos propiedades 
+algebraicas fundamentales:
+
+1. ASOCIATIVIDAD: (a ∘ b) ∘ c = a ∘ (b ∘ c)
+2. CONMUTATIVIDAD: a ∘ b = b ∘ a
+
+Justificación:
+En la programación paralela, múltiples hilos (threads) calculan resultados 
+parciales al mismo tiempo. Cuando terminan, OpenMP combina estos resultados. 
+Como no se puede garantizar qué hilo terminará primero, el orden en el que se 
+combinan los resultados es impredecible. Si la operación matemática no es 
+asociativa y conmutativa, ejecutar el programa varias veces dará resultados 
+distintos e incorrectos (condición de carrera).
+
+-------------------------------------------------------------------------------
+2. Análisis de operaciones (Pregunta 5)
+-------------------------------------------------------------------------------
+
+(i) El máximo común divisor (gcd) de dos o más enteros
+
+-¿Es conmutativa?: SÍ. gcd(a, b) = gcd(b, a).
+-¿Es asociativa?: SÍ. gcd(a, gcd(b, c)) = gcd(gcd(a, b), c).
+-VEREDICTO: Válida.
+--------------------------------------------------------------------------------------
+(ii) El producto de matrices de tamaño 2x2
+
+-¿Es asociativa?: SÍ. A(BC) = (AB)C.
+-¿Es conmutativa?: NO. En álgebra lineal general, el orden de los factores 
+  altera el producto: AB ≠ BA.
+-VEREDICTO: Inválida. Si el hilo 2 termina antes que el hilo 1, OpenMP 
+  podría multiplicarlos al revés, arruinando el cálculo.
+--------------------------------------------------------------------------------------
+(iii) El producto complejo de dos o más números complejos
+
+-¿Es conmutativa?: SÍ. z1 * z2 = z2 * z1.
+-¿Es asociativa?: SÍ. z1 * (z2 * z3) = (z1 * z2) * z3.
+-VEREDICTO: Válida. Los números complejos se comportan igual que los reales 
+  en la multiplicación, por lo que se pueden reducir en paralelo sin problema.
+--------------------------------------------------------------------------------------
+(iv) El producto de dos o más cuaterniones
+
+-¿Es asociativa?: SÍ.
+-¿Es conmutativa?: NO. q1 * q2 ≠ q2 * q1. Los cuaterniones representan 
+  rotaciones en 3D; rotar en X y luego en Y no es lo mismo que rotar en Y y 
+  luego en X.
+-VEREDICTO: Inválida. Mismo problema que la multiplicación de matrices.
+----------------------------------------------------------------------------------------
+(v) La evaluación incremental de medias por pares: (a, b) -> (a + b) / 2
+
+-¿Es conmutativa?: SÍ. (a + b) / 2 = (b + a) / 2.
+-¿Es asociativa?: NO. Veámoslo matemáticamente:
+  Agrupando a la izquierda: ((a+b)/2 + c) / 2 = (a + b + 2c) / 4
+  Agrupando a la derecha: (a + (b+c)/2) / 2 = (2a + b + c) / 4
+  Ambos resultados son completamente distintos.
+-VEREDICTO: Inválida. Si OpenMP agrupa los promedios de los hilos de manera 
+  distinta, el resultado final será basura matemática.
+
+-------------------------------------------------------------------------------
+3. CONCLUSIÓN
+-------------------------------------------------------------------------------
+Las únicas operaciones de la lista que pueden ser utilizadas para una 
+reducción paralela en OpenMP de manera segura son la (i) y la (iii).
